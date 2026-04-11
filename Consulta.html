@@ -9,87 +9,78 @@
 <body class="bg-slate-50 p-4">
     <div class="max-w-md mx-auto space-y-4">
         
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center">
             <h1 class="text-xl font-bold text-slate-800 mb-1">Estado del Préstamo</h1>
-            <p class="text-sm text-slate-500 mb-6">Visualización de pagos realizados para la obra del baño.</p>
-            
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-slate-100 p-4 rounded-lg">
-                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Saldo Pendiente</p>
-                    <p id="restante" class="text-lg font-bold text-slate-900">$ 6.000.000,00</p>
-                </div>
-                <div class="bg-blue-600 p-4 rounded-lg text-white">
-                    <p class="text-[10px] text-blue-100 font-bold uppercase tracking-wider">Progreso</p>
-                    <p id="porcentaje" class="text-lg font-bold">0%</p>
-                </div>
+            <p id="loading-status" class="text-xs text-blue-500 font-bold animate-pulse">Sincronizando con Google Sheets...</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Saldo Pendiente</p>
+                <p id="restante" class="text-lg font-bold text-slate-900">$ 6.000.000,00</p>
+            </div>
+            <div class="bg-blue-600 p-4 rounded-xl shadow-sm text-white text-center">
+                <p class="text-[10px] text-blue-100 font-bold uppercase">Progreso</p>
+                <p id="porcentaje" class="text-lg font-bold">0%</p>
             </div>
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-md font-bold text-slate-700">Historial de Pagos</h2>
-                <span id="veces" class="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-full font-medium">0 pagos</span>
-            </div>
-            
+            <h2 class="text-md font-bold text-slate-700 mb-4">Historial de Pagos</h2>
             <div class="overflow-hidden">
                 <table class="w-full text-left text-sm">
                     <thead>
                         <tr class="text-slate-400 border-b border-slate-100">
-                            <th class="py-3 font-medium">Fecha</th>
-                            <th class="py-3 text-right font-medium">Monto devuelto</th>
+                            <th class="py-2">Fecha</th>
+                            <th class="py-2 text-right">Monto</th>
                         </tr>
                     </thead>
-                    <tbody id="historialBody" class="divide-y divide-slate-50 text-slate-600">
-                        <tr>
-                            <td colspan="2" class="py-4 text-center text-slate-400 animate-pulse">Cargando datos...</td>
-                        </tr>
+                    <tbody id="historialBody" class="divide-y divide-slate-50">
+                        <tr><td colspan="2" class="py-4 text-center text-slate-400 italic">No hay pagos registrados</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
-
-        <p class="text-center text-[10px] text-slate-400 uppercase tracking-widest pt-4">Sincronizado con Google Sheets</p>
     </div>
 
     <script>
+        // TU URL CONFIRMADA
         const URL_API = "https://script.google.com/macros/s/AKfycbys1g1fGZ3QcY-FMjB7_NEC2Ps3C_XQwKXIVCLIbVgTTMHfRVXI3lS9Jk5c0Ww9V96e6w/exec";
         const DEUDA_INICIAL = 6000000;
 
-        window.onload = actualizarDashboard;
-
-        async function actualizarDashboard() {
+        async function cargarDatos() {
             try {
                 const response = await fetch(URL_API);
+                if (!response.ok) throw new Error("Error en respuesta");
                 const data = await response.json();
-                render(data);
+                
+                const fmt = new Intl.NumberFormat('es-AR', {style: 'currency', currency: 'ARS'});
+                
+                // Actualizar números
+                const pagado = Number(data.pagado) || 0;
+                document.getElementById('restante').innerText = fmt.format(DEUDA_INICIAL - pagado);
+                document.getElementById('porcentaje').innerText = data.porcentaje + "%";
+                document.getElementById('loading-status').innerText = "Datos actualizados";
+                document.getElementById('loading-status').classList.remove('animate-pulse', 'text-blue-500');
+                document.getElementById('loading-status').classList.add('text-green-500');
+
+                // Actualizar tabla
+                if(data.historial && data.historial.length > 0) {
+                    document.getElementById('historialBody').innerHTML = data.historial.map(p => `
+                        <tr>
+                            <td class="py-3 text-slate-600">${p.fecha}</td>
+                            <td class="py-3 text-right font-bold text-slate-800">${fmt.format(p.importe)}</td>
+                        </tr>
+                    `).join('');
+                }
             } catch (e) {
-                console.error("Error de carga");
-                document.getElementById('historialBody').innerHTML = '<tr><td colspan="2" class="py-4 text-center text-red-400">Error al conectar con la base de datos</td></tr>';
+                console.error(e);
+                document.getElementById('loading-status').innerText = "Error de conexión con la base";
+                document.getElementById('loading-status').classList.add('text-red-500');
             }
         }
 
-        function render(data) {
-            const fmt = new Intl.NumberFormat('es-AR', {style: 'currency', currency: 'ARS'});
-            const pagado = data.pagado || 0;
-            const restante = DEUDA_INICIAL - pagado;
-            const porcentaje = ((pagado / DEUDA_INICIAL) * 100).toFixed(1);
-
-            document.getElementById('restante').innerText = fmt.format(restante);
-            document.getElementById('porcentaje').innerText = porcentaje + "%";
-            document.getElementById('veces').innerText = (data.veces || 0) + " pagos";
-
-            const body = document.getElementById('historialBody');
-            if(data.historial && data.historial.length > 0) {
-                body.innerHTML = data.historial.map(p => `
-                    <tr>
-                        <td class="py-3">${p.fecha}</td>
-                        <td class="py-3 text-right font-semibold text-slate-800">${fmt.format(p.importe)}</td>
-                    </tr>
-                `).join('');
-            } else {
-                body.innerHTML = '<tr><td colspan="2" class="py-8 text-center text-slate-400 italic">No se registran pagos aún</td></tr>';
-            }
-        }
+        window.onload = cargarDatos;
     </script>
 </body>
 </html>
