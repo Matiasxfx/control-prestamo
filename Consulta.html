@@ -52,7 +52,7 @@
     </div>
 
     <script>
-        const URL_API = "https://script.google.com/macros/s/AKfycbwhKLbjgiw_ZIgsxDSnqsSkDDTRtgejM4mVRRi5ceGQcWdlYPfwPCMbsMc1tfQW3_6Eyg/exec";
+        const URL_API = "https://script.google.com/macros/s/AKfycbys1g1fGZ3QcY-FMjB7_NEC2Ps3C_XQwKXIVCLIbVgTTMHfRVXI3lS9Jk5c0Ww9V96e6w/exec";
         const DEUDA_INICIAL = 6000000;
 
         window.onload = actualizarDashboard;
@@ -70,7 +70,6 @@
 
         function render(data) {
             const fmt = new Intl.NumberFormat('es-AR', {style: 'currency', currency: 'ARS'});
-            
             const pagado = data.pagado || 0;
             const restante = DEUDA_INICIAL - pagado;
             const porcentaje = ((pagado / DEUDA_INICIAL) * 100).toFixed(1);
