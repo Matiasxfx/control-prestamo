@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Pago - Obra Baño</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 p-4">
+    <div class="max-w-md mx-auto space-y-4">
+        
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <h1 class="text-xl font-bold text-slate-800 mb-1">Estado del Préstamo</h1>
+            <p class="text-sm text-slate-500 mb-6">Visualización de pagos realizados para la obra del baño.</p>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-slate-100 p-4 rounded-lg">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Saldo Pendiente</p>
+                    <p id="restante" class="text-lg font-bold text-slate-900">$ 6.000.000,00</p>
+                </div>
+                <div class="bg-blue-600 p-4 rounded-lg text-white">
+                    <p class="text-[10px] text-blue-100 font-bold uppercase tracking-wider">Progreso</p>
+                    <p id="porcentaje" class="text-lg font-bold">0%</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-md font-bold text-slate-700">Historial de Pagos</h2>
+                <span id="veces" class="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-full font-medium">0 pagos</span>
+            </div>
+            
+            <div class="overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="text-slate-400 border-b border-slate-100">
+                            <th class="py-3 font-medium">Fecha</th>
+                            <th class="py-3 text-right font-medium">Monto devuelto</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historialBody" class="divide-y divide-slate-50 text-slate-600">
+                        <tr>
+                            <td colspan="2" class="py-4 text-center text-slate-400 animate-pulse">Cargando datos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <p class="text-center text-[10px] text-slate-400 uppercase tracking-widest pt-4">Sincronizado con Google Sheets</p>
+    </div>
+
+    <script>
+        const URL_API = "https://script.google.com/macros/s/AKfycbwhKLbjgiw_ZIgsxDSnqsSkDDTRtgejM4mVRRi5ceGQcWdlYPfwPCMbsMc1tfQW3_6Eyg/exec";
+        const DEUDA_INICIAL = 6000000;
+
+        window.onload = actualizarDashboard;
+
+        async function actualizarDashboard() {
+            try {
+                const response = await fetch(URL_API);
+                const data = await response.json();
+                render(data);
+            } catch (e) {
+                console.error("Error de carga");
+                document.getElementById('historialBody').innerHTML = '<tr><td colspan="2" class="py-4 text-center text-red-400">Error al conectar con la base de datos</td></tr>';
+            }
+        }
+
+        function render(data) {
+            const fmt = new Intl.NumberFormat('es-AR', {style: 'currency', currency: 'ARS'});
+            
+            const pagado = data.pagado || 0;
+            const restante = DEUDA_INICIAL - pagado;
+            const porcentaje = ((pagado / DEUDA_INICIAL) * 100).toFixed(1);
+
+            document.getElementById('restante').innerText = fmt.format(restante);
+            document.getElementById('porcentaje').innerText = porcentaje + "%";
+            document.getElementById('veces').innerText = (data.veces || 0) + " pagos";
+
+            const body = document.getElementById('historialBody');
+            if(data.historial && data.historial.length > 0) {
+                body.innerHTML = data.historial.map(p => `
+                    <tr>
+                        <td class="py-3">${p.fecha}</td>
+                        <td class="py-3 text-right font-semibold text-slate-800">${fmt.format(p.importe)}</td>
+                    </tr>
+                `).join('');
+            } else {
+                body.innerHTML = '<tr><td colspan="2" class="py-8 text-center text-slate-400 italic">No se registran pagos aún</td></tr>';
+            }
+        }
+    </script>
+</body>
+</html>
