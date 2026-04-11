@@ -63,9 +63,9 @@
     </div>
 
     <script>
-        const URL_API = "https://script.google.com/macros/s/AKfycbwhKLbjgiw_ZIgsxDSnqsSkDDTRtgejM4mVRRi5ceGQcWdlYPfwPCMbsMc1tfQW3_6Eyg/exec";
-        const form = document.getElementById('formPago');
+        const URL_API = "https://script.google.com/macros/s/AKfycbys1g1fGZ3QcY-FMjB7_NEC2Ps3C_XQwKXIVCLIbVgTTMHfRVXI3lS9Jk5c0Ww9V96e6w/exec";
         const DEUDA_INICIAL = 6000000;
+        const form = document.getElementById('formPago');
 
         window.onload = () => {
             document.getElementById('fecha').valueAsDate = new Date();
@@ -79,16 +79,11 @@
                 render(data);
             } catch (e) { 
                 console.error("Error al sincronizar");
-                // Si falla la carga, al menos mostramos la deuda inicial limpia
-                const fmt = new Intl.NumberFormat('es-AR', {style: 'currency', currency: 'ARS'});
-                document.getElementById('restante').innerText = fmt.format(DEUDA_INICIAL);
             }
         }
 
         function render(data) {
             const fmt = new Intl.NumberFormat('es-AR', {style: 'currency', currency: 'ARS'});
-            
-            // Si el script devuelve valores válidos, los usamos. Si no, calculamos sobre la base.
             const pagado = data.pagado || 0;
             const restante = DEUDA_INICIAL - pagado;
             const porcentaje = ((pagado / DEUDA_INICIAL) * 100).toFixed(2);
@@ -120,14 +115,12 @@
             };
 
             try {
-                // Enviamos el pago
                 await fetch(URL_API, {
                     method: 'POST',
                     mode: 'no-cors',
                     body: JSON.stringify(payload)
                 });
                 
-                // Esperamos un toque para que Google Sheets procese y refrescamos
                 setTimeout(() => {
                     actualizarDashboard();
                     btn.disabled = false;
