@@ -3,139 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Deuda - Obra Baño</title>
+    <title>Control de Préstamo - Matías</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100 p-4">
+<body class="bg-slate-50 p-4">
     <div class="max-w-md mx-auto space-y-4">
         
-        <div class="bg-white rounded-xl shadow-md overflow-hidden p-6">
-            <h1 class="text-2xl font-bold text-gray-800 mb-4">Reembolso Préstamo Baño</h1>
-            
-            <div class="grid grid-cols-2 gap-4 mb-6">
-                <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                    <p class="text-xs text-blue-600 font-semibold uppercase">Restante</p>
-                    <p id="restante" class="text-xl font-bold text-blue-900">$ 6.000.000,00</p>
+        <div class="bg-slate-900 rounded-3xl p-6 text-white shadow-2xl border-b-4 border-emerald-500">
+            <h1 class="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-2">Estado de la Obra</h1>
+            <div class="flex justify-between items-end">
+                <div>
+                    <p class="text-3xl font-black" id="restante">$ 6.000.000</p>
+                    <p class="text-[10px] text-slate-400 uppercase mt-1">Saldo Pendiente</p>
                 </div>
-                <div class="bg-green-50 p-3 rounded-lg border border-green-100">
-                    <p class="text-xs text-green-600 font-semibold uppercase">Progreso</p>
-                    <p id="porcentaje" class="text-xl font-bold text-green-900">0%</p>
-                </div>
-                <div class="bg-purple-50 p-3 rounded-lg col-span-2 text-center border border-purple-100">
-                    <p class="text-xs text-purple-600 font-semibold uppercase">Total de cuotas pagadas</p>
-                    <p id="veces" class="text-xl font-bold text-purple-900">0</p>
+                <div class="text-right">
+                    <p class="text-xl font-bold text-emerald-400" id="porcentaje">0%</p>
+                    <p class="text-[10px] text-slate-400 uppercase">Pagado</p>
                 </div>
             </div>
+        </div>
 
-            <form id="formPago" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Monto a entregar</label>
-                    <div class="relative mt-1">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">$</span>
-                        <input type="number" id="importe" required class="block w-full pl-7 border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Fecha de pago</label>
-                    <input type="date" id="fecha" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50">
-                </div>
-                <button type="submit" id="btnEnviar" class="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition font-bold shadow-lg">
-                    Registrar Entrega
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+            <form id="formPago" class="space-y-3">
+                <label class="text-xs font-bold text-slate-500 uppercase ml-1">Monto a registrar</label>
+                <input type="number" id="importe" placeholder="Ej: 50000" required class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-lg">
+                <label class="text-xs font-bold text-slate-500 uppercase ml-1 block mt-2">Fecha</label>
+                <input type="date" id="fecha" required class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                <button type="submit" id="btn" class="w-full bg-emerald-500 text-white font-black py-4 rounded-xl hover:bg-emerald-600 transition-all uppercase tracking-widest shadow-lg mt-4">
+                    Registrar Pago
                 </button>
             </form>
         </div>
 
-        <div class="bg-white rounded-xl shadow-md p-6">
-            <h2 class="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">Últimos movimientos</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="text-gray-500 border-b">
-                            <th class="py-2">Fecha</th>
-                            <th class="py-2 text-right">Monto</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historialBody" class="divide-y divide-gray-100 text-gray-700">
-                    </tbody>
-                </table>
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+            <h2 class="text-xs font-bold text-slate-400 uppercase mb-4 tracking-widest">Movimientos Realizados</h2>
+            <div id="historial" class="space-y-4">
+                <p class="text-center text-slate-300 animate-pulse">Cargando datos...</p>
             </div>
         </div>
     </div>
 
     <script>
-        const URL_API = "https://script.google.com/macros/s/AKfycbys1g1fGZ3QcY-FMjB7_NEC2Ps3C_XQwKXIVCLIbVgTTMHfRVXI3lS9Jk5c0Ww9V96e6w/exec";
-        const DEUDA_INICIAL = 6000000;
-        const form = document.getElementById('formPago');
+        const SUPABASE_URL = "https://mkkxxncphufevgpiopdx.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_4EzeJFLZV7LjpNZGmJzZoQ_x309PXxk";
+        const DEUDA_TOTAL = 6000000;
+
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function refresh() {
+            const { data, error } = await _supabase.from('pagos').select('*').order('id', { ascending: false });
+            if (error) return;
+
+            const pagado = data.reduce((s, i) => s + Number(i.importe), 0);
+            const fmt = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
+
+            document.getElementById('restante').innerText = fmt.format(DEUDA_TOTAL - pagado);
+            document.getElementById('porcentaje').innerText = ((pagado/DEUDA_TOTAL)*100).toFixed(1) + "%";
+
+            document.getElementById('historial').innerHTML = data.map(p => `
+                <div class="flex justify-between items-center border-b border-slate-50 pb-3">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400">${new Date(p.fecha).toLocaleDateString('es-AR', {timeZone: 'UTC'})}</p>
+                        <p class="font-bold text-slate-700 text-lg">${fmt.format(p.importe)}</p>
+                    </div>
+                    <div class="h-8 w-8 bg-emerald-50 rounded-full flex items-center justify-center">
+                        <span class="text-emerald-500 text-xs font-bold">✓</span>
+                    </div>
+                </div>
+            `).join('') || '<p class="text-center text-slate-300 italic py-4">Sin movimientos aún</p>';
+        }
+
+        document.getElementById('formPago').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn');
+            btn.disabled = true;
+            btn.innerText = "GUARDANDO...";
+
+            const { error } = await _supabase.from('pagos').insert([{ 
+                importe: document.getElementById('importe').value, 
+                fecha: document.getElementById('fecha').value 
+            }]);
+
+            if (!error) {
+                document.getElementById('formPago').reset();
+                document.getElementById('fecha').valueAsDate = new Date();
+                await refresh();
+                alert("¡Pago registrado con éxito!");
+            } else {
+                alert("Error al guardar: Verificá los permisos (Policies) en Supabase");
+            }
+            btn.disabled = false;
+            btn.innerText = "REGISTRAR PAGO";
+        }
 
         window.onload = () => {
             document.getElementById('fecha').valueAsDate = new Date();
-            actualizarDashboard();
-        };
-
-        async function actualizarDashboard() {
-            try {
-                const response = await fetch(URL_API);
-                const data = await response.json();
-                render(data);
-            } catch (e) { 
-                console.error("Error al sincronizar");
-            }
+            refresh();
         }
-
-        function render(data) {
-            const fmt = new Intl.NumberFormat('es-AR', {style: 'currency', currency: 'ARS'});
-            const pagado = data.pagado || 0;
-            const restante = DEUDA_INICIAL - pagado;
-            const porcentaje = ((pagado / DEUDA_INICIAL) * 100).toFixed(2);
-
-            document.getElementById('restante').innerText = fmt.format(restante);
-            document.getElementById('porcentaje').innerText = porcentaje + "%";
-            document.getElementById('veces').innerText = data.veces || 0;
-
-            if(data.historial) {
-                const body = document.getElementById('historialBody');
-                body.innerHTML = data.historial.map(p => `
-                    <tr>
-                        <td class="py-2">${p.fecha}</td>
-                        <td class="py-2 text-right font-medium">${fmt.format(p.importe)}</td>
-                    </tr>
-                `).join('');
-            }
-        }
-
-        form.onsubmit = async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btnEnviar');
-            btn.disabled = true;
-            btn.innerHTML = `<span class="animate-pulse">Guardando...</span>`;
-
-            const payload = {
-                importe: document.getElementById('importe').value,
-                fecha: document.getElementById('fecha').value
-            };
-
-            try {
-                await fetch(URL_API, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify(payload)
-                });
-                
-                setTimeout(() => {
-                    actualizarDashboard();
-                    btn.disabled = false;
-                    btn.innerText = "Registrar Entrega";
-                    alert("¡Pago registrado!");
-                }, 1500);
-
-                form.reset();
-                document.getElementById('fecha').valueAsDate = new Date();
-            } catch (error) {
-                alert("Error de red");
-                btn.disabled = false;
-                btn.innerText = "Registrar Entrega";
-            }
-        };
     </script>
 </body>
 </html>
