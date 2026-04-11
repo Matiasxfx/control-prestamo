@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Deuda - Obra Baño</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="max-w-md mx-auto space-y-4">
+        
+        <div class="bg-white rounded-xl shadow-md overflow-hidden p-6">
+            <h1 class="text-2xl font-bold text-gray-800 mb-4">Reembolso Préstamo Baño</h1>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                    <p class="text-xs text-blue-600 font-semibold uppercase">Restante</p>
+                    <p id="restante" class="text-xl font-bold text-blue-900">$ 6.000.000,00</p>
+                </div>
+                <div class="bg-green-50 p-3 rounded-lg border border-green-100">
+                    <p class="text-xs text-green-600 font-semibold uppercase">Progreso</p>
+                    <p id="porcentaje" class="text-xl font-bold text-green-900">0%</p>
+                </div>
+                <div class="bg-purple-50 p-3 rounded-lg col-span-2 text-center border border-purple-100">
+                    <p class="text-xs text-purple-600 font-semibold uppercase">Total de cuotas pagadas</p>
+                    <p id="veces" class="text-xl font-bold text-purple-900">0</p>
+                </div>
+            </div>
+
+            <form id="formPago" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Monto a entregar</label>
+                    <div class="relative mt-1">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">$</span>
+                        <input type="number" id="importe" required class="block w-full pl-7 border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Fecha de pago</label>
+                    <input type="date" id="fecha" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50">
+                </div>
+                <button type="submit" id="btnEnviar" class="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition font-bold shadow-lg">
+                    Registrar Entrega
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <h2 class="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">Últimos movimientos</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="text-gray-500 border-b">
+                            <th class="py-2">Fecha</th>
+                            <th class="py-2 text-right">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historialBody" class="divide-y divide-gray-100 text-gray-700">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const URL_API = "https://script.google.com/macros/s/AKfycbwhKLbjgiw_ZIgsxDSnqsSkDDTRtgejM4mVRRi5ceGQcWdlYPfwPCMbsMc1tfQW3_6Eyg/exec";
+        const form = document.getElementById('formPago');
+        const DEUDA_INICIAL = 6000000;
+
+        window.onload = () => {
+            document.getElementById('fecha').valueAsDate = new Date();
+            actualizarDashboard();
+        };
+
+        async function actualizarDashboard() {
+            try {
+                const response = await fetch(URL_API);
+                const data = await response.json();
+                render(data);
+            } catch (e) { 
+                console.error("Error al sincronizar");
+                // Si falla la carga, al menos mostramos la deuda inicial limpia
+                const fmt = new Intl.NumberFormat('es-AR', {style: 'currency', currency: 'ARS'});
+                document.getElementById('restante').innerText = fmt.format(DEUDA_INICIAL);
+            }
+        }
+
+        function render(data) {
+            const fmt = new Intl.NumberFormat('es-AR', {style: 'currency', currency: 'ARS'});
+            
+            // Si el script devuelve valores válidos, los usamos. Si no, calculamos sobre la base.
+            const pagado = data.pagado || 0;
+            const restante = DEUDA_INICIAL - pagado;
+            const porcentaje = ((pagado / DEUDA_INICIAL) * 100).toFixed(2);
+
+            document.getElementById('restante').innerText = fmt.format(restante);
+            document.getElementById('porcentaje').innerText = porcentaje + "%";
+            document.getElementById('veces').innerText = data.veces || 0;
+
+            if(data.historial) {
+                const body = document.getElementById('historialBody');
+                body.innerHTML = data.historial.map(p => `
+                    <tr>
+                        <td class="py-2">${p.fecha}</td>
+                        <td class="py-2 text-right font-medium">${fmt.format(p.importe)}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnEnviar');
+            btn.disabled = true;
+            btn.innerHTML = `<span class="animate-pulse">Guardando...</span>`;
+
+            const payload = {
+                importe: document.getElementById('importe').value,
+                fecha: document.getElementById('fecha').value
+            };
+
+            try {
+                // Enviamos el pago
+                await fetch(URL_API, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(payload)
+                });
+                
+                // Esperamos un toque para que Google Sheets procese y refrescamos
+                setTimeout(() => {
+                    actualizarDashboard();
+                    btn.disabled = false;
+                    btn.innerText = "Registrar Entrega";
+                    alert("¡Pago registrado!");
+                }, 1500);
+
+                form.reset();
+                document.getElementById('fecha').valueAsDate = new Date();
+            } catch (error) {
+                alert("Error de red");
+                btn.disabled = false;
+                btn.innerText = "Registrar Entrega";
+            }
+        };
+    </script>
+</body>
+</html>
