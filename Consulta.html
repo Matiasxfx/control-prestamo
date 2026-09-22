@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consulta Préstamo - Obra Baño</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-slate-50 p-4">
     <div class="max-w-md mx-auto space-y-4">
@@ -21,24 +20,22 @@
         <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
             <h2 class="text-xs font-bold text-slate-400 uppercase mb-4 tracking-widest">Historial de devoluciones</h2>
             <div id="historial" class="space-y-4 text-center">
-                <p class="text-slate-300 animate-pulse py-4 italic">Sincronizando con la base de datos...</p>
+                <p class="text-slate-300 animate-pulse py-4 italic">Sincronizando con Google Sheets...</p>
             </div>
         </div>
 
-        <p class="text-center text-[10px] text-slate-400 uppercase tracking-widest">Actualizado en tiempo real • Supabase</p>
+        <p class="text-center text-[10px] text-slate-400 uppercase tracking-widest">Actualizado en tiempo real • Google Sheets</p>
     </div>
 
     <script>
-        const SUPABASE_URL = "https://mkkxxncphufevgpiopdx.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_4EzeJFLZV7LjpNZGmJzZoQ_x309PXxk";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzmtzsVIv8q3rniOuhomgPlxfFIgZP-CqC9MrD8Rjx7zppBG9ulgLoUY99JOm54tAhA0w/exec";
         const DEUDA_TOTAL = 6000000;
-
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function refresh() {
             try {
-                const { data, error } = await _supabase.from('pagos').select('*').order('id', { ascending: false });
-                if (error) throw error;
+                const response = await fetch(WEB_APP_URL);
+                const data = await response.json();
+                const dataOrdenada = [...data].reverse();
 
                 const pagado = data.reduce((s, i) => s + Number(i.importe), 0);
                 const fmt = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
@@ -46,14 +43,17 @@
                 document.getElementById('restante').innerText = fmt.format(DEUDA_TOTAL - pagado);
                 document.getElementById('porcentaje').innerText = ((pagado/DEUDA_TOTAL)*100).toFixed(1) + "% pagado";
 
-                document.getElementById('historial').innerHTML = data.map(p => `
-                    <div class="flex justify-between items-center border-b border-slate-50 pb-3 text-left">
-                        <div>
-                            <p class="text-[10px] font-bold text-slate-400">${new Date(p.fecha).toLocaleDateString('es-AR', {timeZone: 'UTC'})}</p>
-                            <p class="font-bold text-slate-700 text-lg">${fmt.format(p.importe)}</p>
+                document.getElementById('historial').innerHTML = dataOrdenada.map(p => {
+                    const fechaFormateada = new Date(p.fecha).toLocaleDateString('es-AR', {timeZone: 'UTC'});
+                    return `
+                        <div class="flex justify-between items-center border-b border-slate-50 pb-3 text-left">
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400">${fechaFormateada}</p>
+                                <p class="font-bold text-slate-700 text-lg">${fmt.format(p.importe)}</p>
+                            </div>
                         </div>
-                    </div>
-                `).join('') || '<p class="text-center text-slate-300 italic py-4">No se registran pagos todavía</p>';
+                    `;
+                }).join('') || '<p class="text-center text-slate-300 italic py-4">No se registran pagos todavía</p>';
             } catch (e) {
                 document.getElementById('historial').innerHTML = '<p class="text-red-400 py-4 italic">Error al conectar con el servidor</p>';
             }
